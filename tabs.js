@@ -40,12 +40,20 @@ class SakugaTabs extends fx.Base {
       t.addEventListener('click', () => this.go(i));
       t.addEventListener('keydown', (e) => { const d = { ArrowRight: 1, ArrowLeft: -1, Home: -99, End: 99 }[e.key]; if (!d) return; e.preventDefault(); const n = Math.abs(d) > 1 ? (d < 0 ? 0 : this.tabs.length - 1) : (i + d + this.tabs.length) % this.tabs.length; this.go(n); this.tabs[n].focus(); });
     });
+    this.bar = this.$('.tabs');
+    this.bw = parseFloat(getComputedStyle(this.bar).borderLeftWidth) || 0;
     this.go(+(this.getAttribute('selected') || 0), true);
-    new ResizeObserver(() => this.go(this.selected, true)).observe(this.$('.tabs'));
+    new ResizeObserver(() => this.go(this.selected, true)).observe(this.bar);
   }
   frame(dt) {
-    const sx = this.sx, x = sx.step(dt), w = this.sw.step(dt) + Math.min(46, Math.abs(sx.v) * 0.06), u = this.up.step(dt);
-    this.ind.style.transform = `translate(${x - (sx.v < 0 ? 0 : w - this.sw.x)}px, ${u}px)`; this.ind.style.width = w + 'px';
+    const sx = this.sx, x = sx.step(dt), sw = this.sw.step(dt), u = this.up.step(dt);
+    const stretch = Math.min(46, Math.abs(sx.v) * 0.06), w = sw + stretch;
+    const tx = x - (sx.v < 0 ? 0 : stretch);
+    // CSS pulls the cap left by one border so the first tab meets the outer edge.
+    // Near the right end, add two borders of width so the last tab meets it too.
+    const bw = this.bw || 0, inner = this.bar.clientWidth, logicalRight = x + sw;
+    const cover = inner > 0 ? Math.max(0, Math.min(bw * 2, logicalRight - (inner - bw * 2))) : 0;
+    this.ind.style.transform = `translate(${tx}px, ${u}px)`; this.ind.style.width = (w + cover) + 'px';
     if (this.pending && Math.abs(x - sx.to) < 3) {   // it has landed
       this.pending = false; this.up.x = -7; const c = at(this.tabs[this.selected]), dir = this.dir;
       ticks(c.x, c.y - c.h / 2 - 12, { dir: -Math.PI / 2, n: 3, r: 4, len: 15, fan: 0.5, life: 0.5 }); puff(c.x - dir * (c.w / 2 + 12), c.y - 6, { size: 9, n: 4, vx: -dir * 20, vy: -12, life: 0.7 });
